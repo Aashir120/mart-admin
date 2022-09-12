@@ -1,124 +1,78 @@
-import { StyleSheet, Text, View ,Image,TouchableOpacity, Alert, Keyboard} from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View ,Image,TouchableOpacity, Alert, Keyboard,ScrollView} from 'react-native';
+import React, { useEffect, useState ,useContext} from 'react';
 import * as Style from '../assets/styles';
 import { ApplicationProvider, Layout,Icon, IconRegistry} from '@ui-kitten/components';
 import * as eva from '@eva-design/eva';
 import { EvaIconsPack } from '@ui-kitten/eva-icons';
-import { ScrollView, TextInput } from 'react-native-gesture-handler';
+import { TextInput } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import database from '@react-native-firebase/database';
+import {AuthContext} from '../components/AuthProvider';
 
 const Order = ({navigation, ...props}) => {
 
-  const message_array= [];
-  let BinNotes = [];
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+  var nowDate = new Date(); 
+  var date = (monthNames[nowDate.getMonth()])+' '+nowDate.getDate()+', '+nowDate.getFullYear(); 
+  var delivery = (monthNames[nowDate.getMonth()+2])+' '+nowDate.getDate()+', '+nowDate.getFullYear(); 
+
   const[order,setOrder] = useState([]);
-
-  useEffect(() => {
-  database().ref('Order').once('value') 
-  .then((snapshot) => {
-
-     snapshot.forEach((childSnapshot) => {
-       message_array.push({
-        
-        ...childSnapshot.val()
-       });
-     });
-     message_array.map(item=>{
-      BinNotes.push(item)
-      // console.log('item==',item);
-     });
-     
-     //console.log('binNotes',BinNotes);
-
-     setOrder(BinNotes)
-
-  })},[])  
-
-
-  // const[searchNote,setSearchNote] = useState();
-  // function search(){
-  //   if(searchNote === ''){
-  //     Alert.alert('Type something in search box');
-
-  //   } else if(searchNote!=''){
-  //     order.forEach((item,index) => {
-  //       if(item.Mart.includes(searchNote)){
-  //         let searchItem = [...props.notes]
-  //         let firstElOfArray = searchItem[0];
-  //         let index = [...props.notes].indexOf(item)
-  //         searchItem[0] = item
-  //         searchItem[index] = firstElOfArray
-  //         props.setNotes(searchItem)
-  //       }
-        
-  //     });
+  var main = [];
+  function readFunction(){
+    database().ref('Orders').on('value',snapshot=>{
       
-  //   }
-    
-  //   setSearchNote('');
-  //   Keyboard.dismiss();
-  // }
-  // props.notes.forEach((item)=>{
-  //   console.log('item',item.Mart);
-  // })
+      snapshot.forEach(child => {
+        main.push({
+          ...child.val()
+        })
+      });
+      setOrder(main)
 
+    })
+    
+  }
+
+  useEffect(() =>{
+    readFunction()
+    return () => {
+      setOrder([]); // This worked for me
+    };
+  },[])
 
   return (
     <View style={styles.notesContainer}>
       <View style={styles.headingContainer}>
-      <Text style={styles.heading} >Orders...</Text>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} > 
+        {order.map((item,index)=>{
+          return <TouchableOpacity key={index}>
+          <View  style={styles.item}>
+            <View style={{flexDirection:'row',marginBottom:10}} >
+            <Text style={{fontSize:20,fontWeight:'bold',width:190}} >Order ID: {item.orderId}</Text>
+            <TouchableOpacity onPress={(()=>{navigation.navigate('Track',item)})} 
+            style={{paddingLeft:10,width:90,backgroundColor:'blue',borderColor:'blue',color:'white',borderRadius:5,height:30,padding:5}} >
+              <Text style={{color:'white'}} >Track Order</Text>
+            </TouchableOpacity>
+            
+            </View>
+            <TouchableOpacity onPress={(()=>{navigation.navigate('OrderDetails',item)})} 
+            style={{marginLeft:190,width:90,backgroundColor:'yellow',borderColor:'yellow',color:'black',borderRadius:5,height:30,padding:5}} >
+              <Text style={{color:'black'}} >Order Details</Text>
+            </TouchableOpacity>
+            <View style={{marginTop:10}} >
+              <Text style={{fontWeight:'600'}} >Order Date: {date}</Text>
+              <Text style={{fontWeight:'600',color:'green'}}>Estimated Delivery: {delivery}</Text>
+            </View>
+             </View>
+             </TouchableOpacity>
+        })}
+        </ScrollView>
       <View style={{flexDirection:'row'}} >
       </View>
       </View>
-      <View style={{flexDirection:'row',alignItems:'center'}} >
-        <Text style={{fontWeight:'700',fontSize:18,color:Style.color}} >
-          Total: {order.length}
-        </Text>
-      </View>
-      <View style={styles.divider} ></View>
-      <View style={styles.searchContainer}>
-        {/* <TextInput placeholder='Search...' placeholderTextColor={Style.color} style={[styles.input,{borderWidth:3}]}
-        value={searchNote} onChangeText={(text)=>setSearchNote(text)}
-        />
-        <TouchableOpacity style={[styles.searchButton,{width:50}]} onPress={()=>search()}  >
-        <ApplicationProvider {...eva} theme={eva.light}>
-            <Icon name="search" fill="white" style={{width:22,height:40}} />
-          </ApplicationProvider>
-        </TouchableOpacity>
-        */}
-        
-      </View>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} >
-        {order.length === 0
-        ?
-        <View styles={styles.emptyNoteContainer} >
-          <Text style={styles.emptyNoteText} >There is no any Open Orders !!!</Text>
-        </View>
-        :
-        order.map((item,index)=>
-        <TouchableOpacity key={index} onPress={()=>navigation.navigate('Products',item.Mart)}  >
-          <View style={styles.item} key={index} >
-            <View style={{flexDirection:'row',justifyContent:'space-between'}}>
-              <View style={styles.note}>
-              <Image source={{ uri: item.uri }} style={{width:50,height:50}} />
-                <Text style={styles.index} >
-                  {index + 1}. 
-                  </Text>
-                  <Text style={styles.text} >{item.Mart}</Text> 
-                  </View>
-
-          </View>
-          <View style={styles.dateContainer} >
-            <Text>{props.date}</Text>
-          </View>
-          </View>
-          </TouchableOpacity>
-        )
-        
-        }
-      </ScrollView>
+      
     </View>
   )
 }
@@ -161,7 +115,8 @@ export const styles = StyleSheet.create({
     borderTopColor:Style.color,
     borderWidth:2,
     borderRadius:5,
-    borderLeftWidth:15,
+    borderLeftWidth:8,
+    width:320
   },
   index:{
     fontSize:20,
@@ -182,13 +137,29 @@ export const styles = StyleSheet.create({
     marginLeft:10,
     height:50
   },
+  button_cr:{
+    backgroundColor:Style.color,
+    width:30,
+    borderRadius:100,
+    justifyContent:'center',
+    alignItems:'center',
+    height:30,
+    marginTop:30
+
+  },
+  buttonText_cr:{
+    color:'white',
+    fontSize:20,
+    fontWeight:'bold'
+
+  },
   buttonText:{
     color:'white',
     fontSize:32,
     fontWeight:'800'
   },
   scrollView:{
-    marginBottom:70
+    marginBottom:0
   },
   note:{
     flexDirection:'row',
@@ -196,8 +167,11 @@ export const styles = StyleSheet.create({
   },
   text:{
     fontWeight:'700',
-    fontSize:17,
-    alignSelf:'center'
+    fontSize:18,
+    alignSelf:'center',
+    width:130,
+    paddingLeft:10,
+    marginTop:-20
   },
   delete:{
     color:Style.color,
